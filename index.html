@@ -68,14 +68,29 @@
 <body>
 
     <div class="container">
-        <div id="loading">Generating Secure Key...</div>
+        <h1>RIVALS AGENTIC // ACCESS</h1>
 
-        <div id="content" style="display: none;">
+        <!-- Manual Input Section (Fallback) -->
+        <div id="input-container" style="display: none; margin-bottom: 2rem;">
+            <p style="color: #a0a0a0; font-size: 0.9rem; margin-bottom: 1rem;">
+                NO SESSION DETECTED. PASTE SESSION ID BELOW:
+            </p>
+            <input type="text" id="manualSessionInput" placeholder="Paste ID here (e.g. x9s8d7...)"
+                style="background: #222; border: 1px solid #4ade80; color: white; padding: 0.8rem; border-radius: 4px; width: 100%; text-align: center; margin-bottom: 1rem; font-family: monospace;">
+            <button onclick="generateKey()"
+                style="background: #4ade80; color: black; border: none; padding: 0.8rem 2rem; font-weight: bold; cursor: pointer; border-radius: 4px;">
+                GENERATE KEY
+            </button>
+        </div>
+
+        <div id="result" class="key-box" style="display: none;">
             <h1>ACCESS GRANTED</h1>
             <p>Your unique session key is:</p>
             <div class="key-box" id="keyDisplay" onclick="copyKey()">...</div>
             <p style="font-size: 0.8rem;">Click to Copy • Paste into App</p>
         </div>
+
+        <div id="loading">Generating Secure Key...</div>
 
         <div id="error" style="display: none; color: #ef4444;">
             <h3>Authentication Error</h3>
@@ -90,35 +105,58 @@
         // ---------------------
 
         async function generateKey() {
-            // 1. Get Session ID from URL (?id=...)
+            // 1. Get Session ID from URL or Input
             const urlParams = new URLSearchParams(window.location.search);
-            const sessionId = urlParams.get('id');
+            let sessionId = urlParams.get('id');
+
+            // If not in URL, check input
+            if (!sessionId) {
+                const manualInput = document.getElementById('manualSessionInput');
+                if (manualInput && manualInput.value.trim()) {
+                    sessionId = manualInput.value.trim();
+                }
+            }
 
             if (!sessionId) {
+                // Show Input UI
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
+                document.getElementById('input-container').style.display = 'block';
+                document.getElementById('result').style.display = 'none';
                 return;
             }
 
+            // Hide Input, Show Processing
+            document.getElementById('input-container').style.display = 'none';
+            document.getElementById('result').style.display = 'none'; // Hide result while processing
+            document.getElementById('loading').style.display = 'block'; // Show loading
+
             // 2. Generate Hash: SHA-256(SECRET + SessionID)
-            const msgBuffer = new TextEncoder().encode(SECRET_PHRASE + sessionId);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            try {
+                const msgBuffer = new TextEncoder().encode(SECRET_PHRASE + sessionId);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
 
-            // 3. Convert to Hex
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                // 3. Convert to Hex
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-            // 4. Take first 8 characters and uppercase -> "A1B2C3D4"
-            const finalKey = hashHex.substring(0, 8).toUpperCase();
+                // 4. Take first 8 characters and uppercase -> "A1B2C3D4"
+                const finalKey = hashHex.substring(0, 8).toUpperCase();
 
-            // 5. Display
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
-            document.getElementById('keyDisplay').innerText = finalKey;
+                // 5. Display
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('key-display').textContent = finalKey;
+                document.getElementById('result').style.display = 'block';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').style.display = 'none';
+                alert("Error generating key. Please try again.");
+                // Optionally, show the input container again on error
+                document.getElementById('input-container').style.display = 'block';
+            }
         }
 
         function copyKey() {
-            const key = document.getElementById('keyDisplay').innerText;
+            const key = document.getElementById('key-display').innerText;
             navigator.clipboard.writeText(key).then(() => {
                 alert("Key Copied!");
             });
